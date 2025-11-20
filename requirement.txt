@@ -1,3 +1,0 @@
-speciesnet
-fastapi "[standard]"
-imghdr

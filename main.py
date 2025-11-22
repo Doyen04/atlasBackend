@@ -3,7 +3,7 @@ import logging
 from functools import lru_cache
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from imghdr import what
@@ -42,7 +42,13 @@ def _persist_temp_image(data: bytes, original_name: str | None) -> Path:
 
 def _predict_sync(image_path: Path) -> Dict[str, Any] | None:
     """Run SpeciesNet prediction in a synchronous context."""
-    instances = {"instances": [{"filepath": str(image_path)}]}
+    instances = {
+        "instances": [
+            {
+                "filepath": str(image_path)
+            }
+        ]
+    }
     return get_speciesnet_model().predict(
         instances_dict=instances,
         run_mode="single_thread",
@@ -55,23 +61,46 @@ async def run_speciesnet_inference(image_path: Path) -> Dict[str, Any] | None:
     return await asyncio.to_thread(_predict_sync, image_path)
 
 
-def _summarize_prediction(predictions_dict: Dict[str, Any]|None) -> Dict[str, Any]:
+def _extract_display_name(label: Optional[str]) -> Optional[str]:
+    if not label:
+        return None
+    parts = [segment.strip() for segment in label.split(";") if segment.strip()]
+    return parts[-1] if parts else label
+
+
+def _summarize_prediction(predictions_dict: Dict[str, Any] | None) -> Dict[str, Any]:
     predictions: List[Dict[str, Any]] = predictions_dict.get("predictions", [])  # type: ignore[assignment]
     if not predictions:
         raise RuntimeError("SpeciesNet returned no predictions.")
     first = predictions[0]
     classifications = first.get("classifications") or {}
-    top_classes = [
-        {"label": label, "score": score}
-        for label, score in zip(classifications.get("classes", []), classifications.get("scores", []))
-    ]
+    top_classes = []
+    for label, score in zip(
+        classifications.get("classes", []),
+        classifications.get("scores", []),
+    ):
+        top_classes.append(
+            {
+                "label_raw": label,
+                "display_name": _extract_display_name(label),
+                "score": score,
+            }
+        )
+
+    detections = first.get("detections", [])
+    for detection in detections:
+        detection["label_display"] = _extract_display_name(detection.get("label"))
+
+    prediction_label = first.get("prediction")
     return {
-        "prediction": first.get("prediction"),
+        "prediction": prediction_label,
+        "prediction_display_name": _extract_display_name(prediction_label),
         "prediction_score": first.get("prediction_score"),
         "prediction_source": first.get("prediction_source"),
         "model_version": first.get("model_version"),
         "top_classes": top_classes,
-        "detections": first.get("detections", []),
+        "detections": detections,
+        "best_class": top_classes[0] if top_classes else None,
         "failures": first.get("failures"),
     }
 
@@ -131,5 +160,4 @@ async def create_upload_file(file: UploadFile = File(...)):
         "filename": file.filename,
         "content_size": len(content),
         "speciesnet": speciesnet_summary,
-        "predictions": predictions_dict
     }

@@ -131,4 +131,5 @@ async def create_upload_file(file: UploadFile = File(...)):
         "filename": file.filename,
         "content_size": len(content),
         "speciesnet": speciesnet_summary,
+        "predictions": predictions_dict
     }

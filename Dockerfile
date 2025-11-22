@@ -3,12 +3,13 @@
 
 FROM python:3.12
 
+RUN apt-get update && apt-get install -y libgl1
+
 RUN useradd -m -u 1000 user
 USER user
 ENV PATH="/home/user/.local/bin:$PATH"
 
 WORKDIR /app
-RUN apt-get update && apt-get install -y libgl1
 
 
 COPY --chown=user ./requirements.txt requirements.txt

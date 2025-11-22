@@ -1,0 +1,2 @@
+speciesnet[server]
+fastapi[standard]==0.121.2

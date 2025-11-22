@@ -5,7 +5,7 @@ FROM python:3.12
 
 # Install the missing libGL.so.1 dependency using apt-get
 # This command updates the package list and installs the necessary library
-RUN apt-get update && apt-get install -y libgl1-mesa-glx && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y libgl1
 
 # The two following lines are requirements for the Dev Mode to be functional
 # Learn more about the Dev Mode at https://huggingface.co/dev-mode-explorers

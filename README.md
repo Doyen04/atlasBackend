@@ -91,7 +91,7 @@ curl -X POST http://localhost:8000/analyze/ \
   - Requires a Google AI Studio API key exposed as `GOOGLE_API_KEY` (set
     optionally `GEMINI_MODEL`, default `gemini-1.5-flash`).
   - Accepts `prompt` + `file` form fields and proxies both to Google Gemini via the
-    `google-generativeai` SDK.
+    `google-genai` SDK.
   - Returns JSON containing the submitted prompt, the model used, and the raw
     Gemini response (serialized dictionary).
 

@@ -48,9 +48,14 @@ async def analyze_with_gemini(
             detail="Gemini API call failed. Check server logs for details.",
         ) from exc
 
-    response_dict = response.to_dict() if hasattr(response, "to_dict") else {
-        "text": getattr(response, "text", None)
-    }
+    if hasattr(response, "model_dump"):
+        response_dict = response.model_dump(exclude_none=True)
+    else:
+        to_dict_method = getattr(response, "to_dict", None)
+        if callable(to_dict_method):
+            response_dict = to_dict_method()
+        else:
+            response_dict = {"text": getattr(response, "text", None)}
     return {
         "prompt": prompt,
         "gemini_model": GEMINI_MODEL_NAME,

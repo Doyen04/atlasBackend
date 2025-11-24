@@ -1,5 +1,5 @@
 from .config import ALLOWED_TYPES, GEMINI_MODEL_NAME, MAX_FILE_SIZE, TMP_SPECIESNET_DIR
-from .gemini_utils import call_gemini, get_gemini_model
+from .gemini_utils import call_gemini, get_gemini_client, get_gemini_model
 from .image_utils import (
     is_valid_image_signature,
     persist_temp_image,
@@ -21,6 +21,7 @@ __all__ = [
     "GEMINI_MODEL_NAME",
     "analyze_speciesnet_upload",
     "call_gemini",
+    "get_gemini_client",
     "extract_display_name",
     "get_gemini_model",
     "get_speciesnet_model",

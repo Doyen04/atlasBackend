@@ -46,16 +46,33 @@ Example JSON fragment:
     "content_size": 123456,
     "speciesnet": {
         "prediction": "odocoileus_virginianus",
+        "prediction_display_name": "odocoileus_virginianus",
         "prediction_score": 0.97,
         "top_classes": [
-            {"label": "odocoileus_virginianus", "score": 0.97},
-            {"label": "odocoileus", "score": 0.99}
+            {"label_raw": "odocoileus_virginianus", "display_name": "odocoileus_virginianus", "score": 0.97},
+            {"label_raw": "odocoileus", "display_name": "odocoileus", "score": 0.99}
         ],
         "detections": [
             {"label": "animal", "conf": 0.92, "bbox": [0.12, 0.33, 0.56, 0.41]}
         ]
     }
 }
+```
+
+## `/analyze/` endpoint (prompt + image)
+
+- Accepts a multipart form upload with two fields:
+  - `prompt` (`text/plain` form field) describing the question/instructions.
+  - `file` (image) identical requirements as `/uploadfile/`.
+- Returns the exact SpeciesNet analysis plus the original prompt, so you can tie
+  downstream workflows or LLM calls to the same metadata.
+
+Example request:
+
+```bash
+curl -X POST http://localhost:8000/analyze/ \
+  -F "prompt=Summarize this animal" \
+  -F "file=@/path/to/camera-trap.jpg"
 ```
 
 ## Operational notes
@@ -68,6 +85,24 @@ Example JSON fragment:
 - Refer to the [SpeciesNet PyPI documentation](https://pypi.org/project/speciesnet/)
   for detailed information about inputs, outputs, geofencing, and the detection/
   classification ensemble used by this service.
+
+  ### `/gemini/analyze/` endpoint
+
+  - Requires a Google AI Studio API key exposed as `GOOGLE_API_KEY` (set
+    optionally `GEMINI_MODEL`, default `gemini-1.5-flash`).
+  - Accepts `prompt` + `file` form fields and proxies both to Google Gemini via the
+    `google-generativeai` SDK.
+  - Returns JSON containing the submitted prompt, the model used, and the raw
+    Gemini response (serialized dictionary).
+
+  Example:
+
+  ```bash
+  export GOOGLE_API_KEY="sk-..."
+  curl -X POST http://localhost:8000/gemini/analyze/ \
+    -F "prompt=Describe this animal" \
+    -F "file=@/path/to/camera-trap.jpg"
+  ```
 
 ## Deploy with Docker
 

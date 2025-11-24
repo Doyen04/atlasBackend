@@ -1,7 +1,7 @@
 import os
 from functools import lru_cache
 from io import BytesIO
-from typing import Any
+from typing import Any, Optional, Dict
 
 from PIL import Image
 from google import genai
@@ -30,15 +30,34 @@ def _pil_image_to_part(pil_image: Image.Image) -> types.Part:
     return types.Part.from_bytes(data=buffer.getvalue(), mime_type=mime_type)
 
 
-def call_gemini(prompt: str, pil_image: Image.Image) -> types.GenerateContentResponse:
+def call_gemini(
+    prompt: str,
+    pil_image: Optional[Image.Image] = None,
+    response_json_schema: Optional[Dict] = None,
+) -> Any:
+    """Call Gemini and optionally request JSON output via a JSON Schema.
+
+    If `response_json_schema` is provided, the request will include a config
+    asking Gemini to return `application/json` that conforms to the schema.
+    """
     client = get_gemini_client()
-    content = types.Content(
-        role="user",
-        parts=[
-            types.Part.from_text(text=prompt),
-            _pil_image_to_part(pil_image),
-        ],
-    )
+
+    parts = [types.Part.from_text(text=prompt)]
+    if pil_image is not None:
+        parts.append(_pil_image_to_part(pil_image))
+
+    content = types.Content(role="user", parts=parts)
+
+    if response_json_schema is not None:
+        return client.models.generate_content(
+            model=GEMINI_MODEL_NAME,
+            contents=[content],
+            config={
+                "response_mime_type": "application/json",
+                "response_json_schema": response_json_schema,
+            },
+        )
+
     return client.models.generate_content(
         model=GEMINI_MODEL_NAME,
         contents=[content],

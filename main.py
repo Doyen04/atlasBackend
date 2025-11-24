@@ -25,11 +25,6 @@ async def hello():
     return "Hello, World!"
 
 
-@app.post("/uploadfile/")
-async def upload_file(file: UploadFile = File(...)):
-    return await analyze_speciesnet_upload(file)
-
-
 @app.post("/analyze/")
 async def create_upload_file(file: UploadFile = File(...)):
     return await analyze_speciesnet_upload(file)

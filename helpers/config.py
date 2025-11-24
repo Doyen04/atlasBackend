@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 
@@ -10,8 +11,18 @@ MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 TMP_SPECIESNET_DIR = Path("tmp_speciesnet")
 TMP_SPECIESNET_DIR.mkdir(parents=True, exist_ok=True)
 GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL", "models/gemini-1.5-flash")
+logger = logging.getLogger("atlas_backend")
+
+SERVICE_NAME = "Atlas Backend"
+SERVICE_VERSION = os.getenv("ATLAS_BACKEND_VERSION", "1.0.0")
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
 
 __all__ = [
+    "LOG_LEVEL",
+    "logger",
+    "SERVICE_NAME",
+    "SERVICE_VERSION",
     "ALLOWED_TYPES",
     "MAX_FILE_SIZE",
     "TMP_SPECIESNET_DIR",

@@ -1,4 +1,8 @@
-from .config import ALLOWED_TYPES, GEMINI_MODEL_NAME, MAX_FILE_SIZE, TMP_SPECIESNET_DIR
+from .config import (
+    ALLOWED_TYPES, 
+    GEMINI_MODEL_NAME,
+      MAX_FILE_SIZE, TMP_SPECIESNET_DIR, 
+      SERVICE_NAME, SERVICE_VERSION, logger,LOG_LEVEL  )
 from .gemini_utils import call_gemini, get_gemini_client, get_gemini_model
 from .image_utils import (
     is_valid_image_signature,
@@ -15,6 +19,10 @@ from .speciesnet_utils import (
 )
 
 __all__ = [
+    "LOG_LEVEL",
+    "SERVICE_NAME",
+    "SERVICE_VERSION",
+    "logger",
     "ALLOWED_TYPES",
     "MAX_FILE_SIZE",
     "TMP_SPECIESNET_DIR",

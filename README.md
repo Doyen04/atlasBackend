@@ -19,6 +19,7 @@ information with [SpeciesNet](https://pypi.org/project/speciesnet/).
 1. Create / activate a Python 3.12+ environment.
 2. Install dependencies: `pip install -r requirements.txt`.
 3. Launch the API: `uvicorn main:app --reload`.
+4. Check readiness: `curl http://localhost:8000/healthz` should return `{"status":"ok"}` once dependencies are configured.
 
 ## `/uploadfile/` endpoint
 
@@ -90,19 +91,29 @@ curl -X POST http://localhost:8000/analyze/ \
 
   - Requires a Google AI Studio API key exposed as `GOOGLE_API_KEY` (set
     optionally `GEMINI_MODEL`, default `gemini-1.5-flash`).
-  - Accepts `prompt` + `file` form fields and proxies both to Google Gemini via the
-    `google-genai` SDK.
-  - Returns JSON containing the submitted prompt, the model used, and the raw
-    Gemini response (serialized dictionary).
+  - Accepts `prompt` (required), `file` (optional image), and `schema_json`
+    (optional JSON Schema string) form fields. When `schema_json` is omitted, the
+    service requests a generic JSON object so the LLM always returns JSON that
+    can be fed into future Pydantic models.
+  - Returns JSON containing the submitted prompt, schema, model name, and the
+    Gemini response (automatically parsed from `response.text` when present).
 
-  Example:
+  Example structured request:
 
   ```bash
   export GOOGLE_API_KEY="sk-..."
   curl -X POST http://localhost:8000/gemini/analyze/ \
-    -F "prompt=Describe this animal" \
+    -F "prompt=Extract recipe instructions" \
+    -F "schema_json={\"type\":\"object\",\"properties\":{\"recipe_name\":{\"type\":\"string\"}}}" \
     -F "file=@/path/to/camera-trap.jpg"
   ```
+
+  To send a text-only prompt (no image) just omit the `file` field.
+
+## System endpoints
+
+- `GET /` – service metadata for quick smoke tests.
+- `GET /healthz` – lightweight readiness probe (verifies temp directory, Gemini API key).
 
 ## Deploy with Docker
 

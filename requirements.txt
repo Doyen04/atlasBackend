@@ -1,5 +1,6 @@
 speciesnet[server]
 fastapi[standard]==0.121.2
 google-genai>=0.1.0
+slowapi>=0.1.9
 Pillow>=10.0.0
 python-dotenv

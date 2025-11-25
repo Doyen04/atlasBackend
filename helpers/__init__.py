@@ -1,8 +1,18 @@
 from .config import (
-    ALLOWED_TYPES, 
+    ALLOWED_HOSTS,
+    ALLOWED_ORIGINS,
+    ALLOWED_TYPES,
+    FORCE_HTTPS,
     GEMINI_MODEL_NAME,
-      MAX_FILE_SIZE, TMP_SPECIESNET_DIR, 
-      SERVICE_NAME, SERVICE_VERSION, logger,LOG_LEVEL  )
+    LOG_LEVEL,
+    MAX_FILE_SIZE,
+    RATE_LIMIT_REQUESTS,
+    RATE_LIMIT_WINDOW_SECONDS,
+    SERVICE_NAME,
+    SERVICE_VERSION,
+    TMP_SPECIESNET_DIR,
+    logger,
+)
 from .gemini_utils import call_gemini, get_gemini_client, get_gemini_model
 from .image_utils import (
     is_valid_image_signature,
@@ -10,6 +20,7 @@ from .image_utils import (
     prepare_pil_image,
     read_and_validate_image,
 )
+from .security_utils import configure_rate_limiting
 from .speciesnet_utils import (
     analyze_speciesnet_upload,
     extract_display_name,
@@ -19,21 +30,27 @@ from .speciesnet_utils import (
 )
 
 __all__ = [
+    "ALLOWED_HOSTS",
+    "ALLOWED_ORIGINS",
+    "ALLOWED_TYPES",
+    "FORCE_HTTPS",
+    "GEMINI_MODEL_NAME",
     "LOG_LEVEL",
+    "MAX_FILE_SIZE",
+    "RATE_LIMIT_REQUESTS",
+    "RATE_LIMIT_WINDOW_SECONDS",
     "SERVICE_NAME",
     "SERVICE_VERSION",
-    "logger",
-    "ALLOWED_TYPES",
-    "MAX_FILE_SIZE",
     "TMP_SPECIESNET_DIR",
-    "GEMINI_MODEL_NAME",
     "analyze_speciesnet_upload",
     "call_gemini",
-    "get_gemini_client",
+    "configure_rate_limiting",
     "extract_display_name",
+    "get_gemini_client",
     "get_gemini_model",
     "get_speciesnet_model",
     "is_valid_image_signature",
+    "logger",
     "persist_temp_image",
     "prepare_pil_image",
     "read_and_validate_image",

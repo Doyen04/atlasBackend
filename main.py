@@ -14,16 +14,18 @@ from helpers import (
     TMP_SPECIESNET_DIR,
     analyze_speciesnet_upload,
     call_gemini,
+    configure_rate_limiting,
     logger,
     prepare_pil_image,
     read_and_validate_image,
 )
+from middlewares import configure_middlewares
 
 from schemas import GeminiAnalyzeRequest
 
 logging.basicConfig(
     level=LOG_LEVEL,
-    format="\n%(asctime)s |\n %(levelname)s |\n %(name)s |\n %(message)s",
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
 
 
@@ -35,6 +37,9 @@ app = FastAPI(
         "proxies Gemini for multimodal + structured responses."
     ),
 )
+
+configure_middlewares(app)
+configure_rate_limiting(app)
 
 @app.get("/", tags=["system"])
 async def root() -> dict[str, Any]:
@@ -58,7 +63,9 @@ async def health_check() -> dict[str, Any]:
     }
 
 @app.post("/analyze/")
-async def create_upload_file(file: UploadFile = File(...)):
+async def create_upload_file(
+    file: UploadFile = File(...),
+):
     return await analyze_speciesnet_upload(file)
 
 

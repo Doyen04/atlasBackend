@@ -20,6 +20,11 @@ information with [SpeciesNet](https://pypi.org/project/speciesnet/).
 2. Install dependencies: `pip install -r requirements.txt`.
 3. Launch the API: `uvicorn main:app --reload`.
 4. Check readiness: `curl http://localhost:8000/healthz` should return `{"status":"ok"}` once dependencies are configured.
+5. (Optional) Set production env vars:
+  - `ALLOWED_ORIGINS` – comma-separated list of origins (default `*`).
+  - `ALLOWED_HOSTS` – comma-separated hostnames for TrustedHost middleware.
+  - `RATE_LIMIT_REQUESTS` / `RATE_LIMIT_WINDOW_SECONDS` – configure per-IP throttle.
+  - `FORCE_HTTPS=true` to enforce HTTPS redirects when behind TLS.
 
 ## `/uploadfile/` endpoint
 
@@ -114,6 +119,15 @@ curl -X POST http://localhost:8000/analyze/ \
 
 - `GET /` – service metadata for quick smoke tests.
 - `GET /healthz` – lightweight readiness probe (verifies temp directory, Gemini API key).
+
+## Security & production defaults
+
+- **CORS** – configured via `ALLOWED_ORIGINS`.
+- **Trusted hosts** – restricted by `ALLOWED_HOSTS`.
+- **Rate limiting** – SlowAPI middleware enforces env-configurable per-IP throttling.
+- **Secure headers** – middleware adds HSTS, X-Frame-Options, Referrer-Policy, and more by default.
+- **HTTPS** – enable `FORCE_HTTPS=true` to redirect HTTP to HTTPS (useful behind a TLS proxy).
+- Consider terminating TLS at a load balancer / reverse proxy (e.g., Nginx, CloudFront) when deploying.
 
 ## Deploy with Docker
 

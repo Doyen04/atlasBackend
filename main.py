@@ -2,7 +2,8 @@ import asyncio
 import json
 import logging
 import os
-from typing import Any
+from copy import deepcopy
+from typing import Any, Dict, List
 
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 
@@ -32,6 +33,59 @@ logging.basicConfig(
 DOCS_URL = "/docs" if ENABLE_API_DOCS else None
 REDOC_URL = "/redoc" if ENABLE_API_DOCS else None
 OPENAPI_URL = "/openapi.json" if ENABLE_API_DOCS else None
+
+DEFAULT_GROUPING_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "category_label": {
+            "type": "string",
+            "description": "High-level label shared by related images (species, scene, etc.)",
+        },
+        "analysis": {
+            "type": "string",
+            "description": "Detailed description tailored to the prompt",
+        },
+        "details": {
+            "type": "object",
+            "description": "Optional structured fields returned by Gemini.",
+        },
+    },
+    "required": ["category_label", "analysis"],
+}
+
+GROUP_LABEL_FIELDS = (
+    "category_label",
+    "group_label",
+    "label",
+    "category",
+    "cluster",
+)
+
+
+def _serialize_gemini_response(response: Any) -> Dict[str, Any]:
+    text_val = getattr(response, "text", None)
+    if isinstance(text_val, str):
+        try:
+            return json.loads(text_val)
+        except Exception:
+            return {"text": text_val}
+
+    if hasattr(response, "model_dump"):
+        return response.model_dump(exclude_none=True)
+
+    # to_dict_method = getattr(response, "to_dict", None)
+    # if callable(to_dict_method):
+    #     return to_dict_method()
+
+    return {"text": text_val}
+
+
+def _derive_group_label(response_dict: Dict[str, Any], fallback: str) -> str:
+    for field in GROUP_LABEL_FIELDS:
+        value = response_dict.get(field)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return fallback
 
 app = FastAPI(
     title=SERVICE_NAME,
@@ -82,12 +136,10 @@ async def create_upload_file(
 async def analyze_with_gemini(
     payload: GeminiAnalyzeRequest = Depends(GeminiAnalyzeRequest.as_form),
 ):
-    pil_image = None
-    if payload.file is not None:
-        content = await read_and_validate_image(payload.file)
-        pil_image = prepare_pil_image(content)
+    if not payload.files:
+        raise HTTPException(status_code=400, detail="At least one image file is required.")
 
-    schema_dict: dict[str, Any] = {"type": "object"}
+    schema_dict: Dict[str, Any] = deepcopy(DEFAULT_GROUPING_SCHEMA)
     if payload.schema_json:
         try:
             parsed_schema = json.loads(payload.schema_json)
@@ -97,41 +149,54 @@ async def analyze_with_gemini(
         except (ValueError, json.JSONDecodeError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    try:
-        response = await asyncio.to_thread(
-            call_gemini,
-            payload.prompt,
-            pil_image,
-            schema_dict,
-        )
-    except RuntimeError as config_error:
-        raise HTTPException(status_code=500, detail=str(config_error)) from config_error
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("Gemini request failed")
-        raise HTTPException(
-            status_code=502,
-            detail="Gemini API call failed. Check server logs for details.",
-        ) from exc
+    grouped_results: Dict[str, List[Dict[str, Any]]] = {}
 
-    # If the generate_content path returned text (JSON string), parse it first.
-    text_val = getattr(response, "text", None)
-    if isinstance(text_val, str):
+    for index, upload in enumerate(payload.files):
+        content = await read_and_validate_image(upload)
+        pil_image = prepare_pil_image(content)
+        contextual_prompt = (
+            f"{payload.prompt}\nImage index: {index + 1}\nFilename: {upload.filename or 'upload'}"
+        )
         try:
-            response_dict = json.loads(text_val)
-        except Exception:
-            # Fall back to structured serialization when JSON parsing fails
-            response_dict = {"text": text_val}
-    elif hasattr(response, "model_dump"):
-        response_dict = response.model_dump(exclude_none=True)
-    else:
-        to_dict_method = getattr(response, "to_dict", None)
-        if callable(to_dict_method):
-            response_dict = to_dict_method()
-        else:
-            response_dict = {"text": text_val}
+            response = await asyncio.to_thread(
+                call_gemini,
+                contextual_prompt,
+                pil_image,
+                schema_dict,
+            )
+        except RuntimeError as config_error:
+            raise HTTPException(status_code=500, detail=str(config_error)) from config_error
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Gemini request failed for %s", upload.filename)
+            raise HTTPException(
+                status_code=502,
+                detail="Gemini API call failed. Check server logs for details.",
+            ) from exc
+
+        response_dict = _serialize_gemini_response(response)
+        group_key = _derive_group_label(response_dict, f"group_{index + 1}")
+        grouped_results.setdefault(group_key, []).append(
+            {
+                "index": index,
+                "filename": upload.filename,
+                "content_size": len(content),
+                "response": response_dict,
+            }
+        )
+
+    groups_payload = [
+        {
+            "group": key,
+            "count": len(items),
+            "items": items,
+        }
+        for key, items in grouped_results.items()
+    ]
+
     return {
         "prompt": payload.prompt,
         "schema": schema_dict,
         "gemini_model": GEMINI_MODEL_NAME,
-        "response": response_dict,
+        "total_images": len(payload.files),
+        "groups": groups_payload,
     }

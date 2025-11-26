@@ -1,4 +1,5 @@
-from typing import Optional
+from typing import List, Optional
+
 from fastapi import File, Form, UploadFile
 from pydantic import BaseModel, Field
 
@@ -11,9 +12,9 @@ class GeminiAnalyzeRequest(BaseModel):
         default=None,
         description="Optional JSON schema string describing the desired Gemini response.",
     )
-    file: Optional[UploadFile] = Field(
-        default=None,
-        description="Optional image to include with the Gemini prompt.",
+    files: List[UploadFile] = Field(
+        default_factory=list,
+        description="One or more images to analyze and group.",
     )
 
     model_config = {
@@ -30,9 +31,8 @@ class GeminiAnalyzeRequest(BaseModel):
             default=None,
             description="Optional JSON schema string describing the desired Gemini response.",
         ),
-        file: Optional[UploadFile] = File(
-            default=None,
-            description="Optional image to include with the Gemini prompt.",
+        files: List[UploadFile] = File(
+            ..., description="Upload one or more images using the same form field."
         ),
     ) -> "GeminiAnalyzeRequest":
-        return cls(prompt=prompt, schema_json=schema_json, file=file)
+        return cls(prompt=prompt, schema_json=schema_json, files=files)

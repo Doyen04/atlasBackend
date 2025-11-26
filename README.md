@@ -96,12 +96,13 @@ curl -X POST http://localhost:8000/analyze/ \
 
   - Requires a Google AI Studio API key exposed as `GOOGLE_API_KEY` (set
     optionally `GEMINI_MODEL`, default `gemini-1.5-flash`).
-  - Accepts `prompt` (required), `file` (optional image), and `schema_json`
+  - Accepts `prompt` (required), `files` (one or more images), and `schema_json`
     (optional JSON Schema string) form fields. When `schema_json` is omitted, the
-    service requests a generic JSON object so the LLM always returns JSON that
-    can be fed into future Pydantic models.
-  - Returns JSON containing the submitted prompt, schema, model name, and the
-    Gemini response (automatically parsed from `response.text` when present).
+    service requests a grouping-friendly JSON object so Gemini returns a
+    `category_label` for clustering related images.
+  - Responds with grouped results: each group bundles images that Gemini marked
+    with the same `category_label` (or other label fields), along with per-image
+    responses, counts, and metadata.
 
   Example structured request:
 
@@ -110,10 +111,13 @@ curl -X POST http://localhost:8000/analyze/ \
   curl -X POST http://localhost:8000/gemini/analyze/ \
     -F "prompt=Extract recipe instructions" \
     -F "schema_json={\"type\":\"object\",\"properties\":{\"recipe_name\":{\"type\":\"string\"}}}" \
-    -F "file=@/path/to/camera-trap.jpg"
+    -F "files=@/path/to/camera-trap-1.jpg" \
+    -F "files=@/path/to/camera-trap-2.jpg"
   ```
 
-  To send a text-only prompt (no image) just omit the `file` field.
+  To send a single image, include one `files=@...` argument. Multiple `files`
+  fields will be grouped automatically based on the model's `category_label` (or
+  fall back to per-image groups when custom schemas omit that field).
 
 ## System endpoints
 

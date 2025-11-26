@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 
 from helpers import (
+    ENABLE_API_DOCS,
     GEMINI_MODEL_NAME,
     LOG_LEVEL,
     SERVICE_NAME,
@@ -28,6 +29,9 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
 
+DOCS_URL = "/docs" if ENABLE_API_DOCS else None
+REDOC_URL = "/redoc" if ENABLE_API_DOCS else None
+OPENAPI_URL = "/openapi.json" if ENABLE_API_DOCS else None
 
 app = FastAPI(
     title=SERVICE_NAME,
@@ -36,6 +40,9 @@ app = FastAPI(
         "FastAPI service that validates wildlife uploads, runs SpeciesNet, and "
         "proxies Gemini for multimodal + structured responses."
     ),
+    docs_url=DOCS_URL,
+    redoc_url=REDOC_URL,
+    openapi_url=OPENAPI_URL,
 )
 
 configure_middlewares(app)
@@ -43,12 +50,14 @@ configure_rate_limiting(app)
 
 @app.get("/", tags=["system"])
 async def root() -> dict[str, Any]:
-    return {
+    payload = {
         "service": SERVICE_NAME,
         "version": SERVICE_VERSION,
-        "docs": "/docs",
         "healthz": "/healthz",
     }
+    if DOCS_URL:
+        payload["docs"] = DOCS_URL
+    return payload
 
 
 @app.get("/healthz", tags=["system"])

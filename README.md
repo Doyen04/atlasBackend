@@ -127,6 +127,7 @@ curl -X POST http://localhost:8000/analyze/ \
 - **Rate limiting** – SlowAPI middleware enforces env-configurable per-IP throttling.
 - **Secure headers** – middleware adds HSTS, X-Frame-Options, Referrer-Policy, and more by default.
 - **HTTPS** – enable `FORCE_HTTPS=true` to redirect HTTP to HTTPS (useful behind a TLS proxy).
+- **Docs toggle** – set `ENABLE_API_DOCS=true` if you need `/docs`/`/redoc`. Defaults to `false` for production hardening.
 - Consider terminating TLS at a load balancer / reverse proxy (e.g., Nginx, CloudFront) when deploying.
 
 ## Deploy with Docker

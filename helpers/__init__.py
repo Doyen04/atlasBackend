@@ -14,7 +14,13 @@ from .config import (
     TMP_SPECIESNET_DIR,
     logger,
 )
-from .gemini_utils import call_gemini, get_gemini_client, get_gemini_model
+from .gemini_utils import (
+    call_gemini,
+    get_gemini_client,
+    get_gemini_model,
+    GEMINI_UNAVAILABLE_MESSAGE,
+    is_gemini_unavailable_error,
+)
 from .image_utils import (
     is_valid_image_signature,
     persist_temp_image,
@@ -47,6 +53,7 @@ __all__ = [
     "analyze_speciesnet_upload",
     "call_gemini",
     "configure_rate_limiting",
+    "GEMINI_UNAVAILABLE_MESSAGE",
     "extract_display_name",
     "get_gemini_client",
     "get_gemini_model",
@@ -58,4 +65,5 @@ __all__ = [
     "read_and_validate_image",
     "run_speciesnet_inference",
     "summarize_prediction",
+    "is_gemini_unavailable_error",
 ]

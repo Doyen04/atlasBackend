@@ -3,13 +3,14 @@ import json
 import logging
 import os
 from copy import deepcopy
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 
 from helpers import (
     ENABLE_API_DOCS,
     GEMINI_MODEL_NAME,
+    GEMINI_UNAVAILABLE_MESSAGE,
     LOG_LEVEL,
     SERVICE_NAME,
     SERVICE_VERSION,
@@ -17,6 +18,7 @@ from helpers import (
     analyze_speciesnet_upload,
     call_gemini,
     configure_rate_limiting,
+    is_gemini_unavailable_error,
     logger,
     prepare_pil_image,
     read_and_validate_image,
@@ -63,7 +65,18 @@ GROUP_LABEL_FIELDS = (
     "label",
     "category",
     "cluster",
+    "species",
+    "name",
+    "title",
 )
+
+
+def _extract_label_from_mapping(candidate: Dict[str, Any]) -> Optional[str]:
+    for field in GROUP_LABEL_FIELDS:
+        value = candidate.get(field)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
 
 
 def _serialize_gemini_response(response: Any) -> Dict[str, Any]:
@@ -85,10 +98,25 @@ def _serialize_gemini_response(response: Any) -> Dict[str, Any]:
 
 
 def _derive_group_label(response_dict: Dict[str, Any], fallback: str) -> str:
-    for field in GROUP_LABEL_FIELDS:
-        value = response_dict.get(field)
-        if isinstance(value, str) and value.strip():
-            return value.strip()
+    direct_label = _extract_label_from_mapping(response_dict)
+    if direct_label:
+        return direct_label
+
+    nested_candidates: List[Any] = []
+    results = response_dict.get("results")
+    if isinstance(results, list):
+        nested_candidates.extend(results)
+
+    details = response_dict.get("details")
+    if isinstance(details, dict):
+        nested_candidates.append(details)
+
+    for candidate in nested_candidates:
+        if isinstance(candidate, dict):
+            nested_label = _extract_label_from_mapping(candidate)
+            if nested_label:
+                return nested_label
+
     return fallback
 
 app = FastAPI(
@@ -168,8 +196,16 @@ async def analyze_with_gemini(
                 pil_image,
                 schema_dict,
             )
-        except RuntimeError as config_error:
-            raise HTTPException(status_code=500, detail=str(config_error)) from config_error
+        except RuntimeError as runtime_error:
+            if is_gemini_unavailable_error(runtime_error):
+                logger.warning("Gemini overloaded for %s: %s", upload.filename, runtime_error)
+                raise HTTPException(
+                    status_code=503,
+                    detail=GEMINI_UNAVAILABLE_MESSAGE,
+                    headers={"Retry-After": "30"},
+                ) from runtime_error
+
+            raise HTTPException(status_code=500, detail=str(runtime_error)) from runtime_error
         except Exception as exc:  # noqa: BLE001
             logger.exception("Gemini request failed for %s", upload.filename)
             raise HTTPException(

@@ -25,6 +25,10 @@ from middlewares import configure_middlewares
 
 from schemas import GeminiAnalyzeRequest
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 logging.basicConfig(
     level=LOG_LEVEL,
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
@@ -149,7 +153,7 @@ async def analyze_with_gemini(
         except (ValueError, json.JSONDecodeError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    grouped_results: Dict[str, List[Dict[str, Any]]] = {}
+    grouped_results: Dict[str, Dict[str, Any]] = {}
 
     for index, upload in enumerate(payload.files):
         content = await read_and_validate_image(upload)
@@ -175,23 +179,37 @@ async def analyze_with_gemini(
 
         response_dict = _serialize_gemini_response(response)
         group_key = _derive_group_label(response_dict, f"group_{index + 1}")
-        grouped_results.setdefault(group_key, []).append(
+
+        group_entry = grouped_results.setdefault(
+            group_key,
+            {
+                "summary": None,
+                "items": [],
+            },
+        )
+
+        if group_entry["summary"] is None:
+            group_entry["summary"] = response_dict
+
+        group_entry["items"].append(
             {
                 "index": index,
                 "filename": upload.filename,
                 "content_size": len(content),
-                "response": response_dict,
             }
         )
 
-    groups_payload = [
-        {
-            "group": key,
-            "count": len(items),
-            "items": items,
-        }
-        for key, items in grouped_results.items()
-    ]
+    groups_payload = []
+    for key, data in grouped_results.items():
+        items = data["items"]
+        groups_payload.append(
+            {
+                "group": key,
+                "count": len(items),
+                "summary": data["summary"],
+                "items": items,
+            }
+        )
 
     return {
         "prompt": payload.prompt,

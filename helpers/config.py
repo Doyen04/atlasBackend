@@ -2,9 +2,6 @@ import logging
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
-
-load_dotenv()
 
 def _split_env_list(value: str, fallback: list[str]) -> list[str]:
     candidates = [item.strip() for item in value.split(",") if item.strip()]

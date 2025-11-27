@@ -101,8 +101,9 @@ curl -X POST http://localhost:8000/analyze/ \
     service requests a grouping-friendly JSON object so Gemini returns a
     `category_label` for clustering related images.
   - Responds with grouped results: each group bundles images that Gemini marked
-    with the same `category_label` (or other label fields), along with per-image
-    responses, counts, and metadata.
+    with the same `category_label` (or other label fields) and returns a single
+    `summary` response for the group plus per-image metadata (index, filename,
+    size).
 
   Example structured request:
 
